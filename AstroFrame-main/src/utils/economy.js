@@ -5,6 +5,9 @@ import { logger } from './logger.js';
 import { validateDiscordId, validateNumber } from './validation.js';
 import { DEFAULT_ECONOMY_DATA } from './constants.js';
 
+// Εισαγωγή της "γέφυρας" από το index.js
+import { supabase } from '../index.js';
+
 const ECONOMY_CONFIG = BotConfig.economy || {};
 const BASE_BANK_CAPACITY = ECONOMY_CONFIG.baseBankCapacity || 10000;
 const BANK_CAPACITY_PER_LEVEL = ECONOMY_CONFIG.bankCapacityPerLevel || 5000;
@@ -12,18 +15,11 @@ const DAILY_AMOUNT = ECONOMY_CONFIG.dailyAmount || 100;
 const WORK_MIN = ECONOMY_CONFIG.workMin || 10;
 const WORK_MAX = ECONOMY_CONFIG.workMax || 100;
 const COOLDOWNS = ECONOMY_CONFIG.cooldowns || {
-daily: 24 * 60 * 60 * 1000,
-work: 60 * 60 * 1000,
-crime: 2 * 60 * 60 * 1000,
-rob: 4 * 60 * 60 * 1000,
+    daily: 24 * 60 * 60 * 1000,
+    work: 60 * 60 * 1000,
+    crime: 2 * 60 * 60 * 1000,
+    rob: 4 * 60 * 60 * 1000,
 };
-
-
-
-
-
-
-
 
 export function getEconomyKey(guildId, userId) {
     const validGuildId = validateDiscordId(guildId, 'guildId');
@@ -36,26 +32,18 @@ export function getEconomyKey(guildId, userId) {
     return `economy:${validGuildId}:${validUserId}`;
 }
 
-
-
-
-
-
 export function getMaxBankCapacity(userData) {
     if (!userData) return BASE_BANK_CAPACITY;
     
     const bankLevel = userData.bankLevel || 0;
     let capacity = BASE_BANK_CAPACITY + (bankLevel * BANK_CAPACITY_PER_LEVEL);
     
-    
     const upgrades = userData.upgrades || {};
     const inventory = userData.inventory || {};
-    
     
     if (upgrades['bank_upgrade_1']) {
         capacity = Math.floor(capacity * 1.5);
     }
-    
     
     const bankNotes = inventory['bank_note'] || 0;
     capacity += (bankNotes * 10000);
@@ -63,21 +51,9 @@ export function getMaxBankCapacity(userData) {
     return capacity;
 }
 
-
-
-
-
-
 export function formatCurrency(amount) {
     return `${amount.toLocaleString()} ${ECONOMY_CONFIG.currency || 'coins'}`;
 }
-
-
-
-
-
-
-
 
 export async function getEconomyData(client, guildId, userId) {
     try {
@@ -95,14 +71,6 @@ export async function getEconomyData(client, guildId, userId) {
     }
 }
 
-
-
-
-
-
-
-
-
 export async function setEconomyData(client, guildId, userId, data) {
     try {
         if (!client.db || typeof client.db.set !== 'function') {
@@ -111,24 +79,32 @@ export async function setEconomyData(client, guildId, userId, data) {
 
         const key = getEconomyKey(guildId, userId);
         const normalized = normalizeEconomyData(data, DEFAULT_ECONOMY_DATA);
+        
+        // 1. Αποθήκευση στην τοπική βάση του Bot (Το OG Σύστημα)
         await client.db.set(key, normalized);
+        
+        // 2. Συγχρονισμός με Supabase (Η γέφυρα για το Lovable)
+        if (supabase) {
+            try {
+                await supabase
+                    .from('economy_stats')
+                    .upsert({ 
+                        user_id: userId, 
+                        points: normalized.wallet || 0, 
+                        last_activity: new Date().toISOString() 
+                    });
+            } catch (supabaseError) {
+                // Αν αποτύχει η γέφυρα, το bot συνεχίζει κανονικά
+                logger.error(`Supabase sync failed for user ${userId}:`, supabaseError);
+            }
+        }
+
         return true;
     } catch (error) {
         logger.error(`Error saving economy data for user ${userId}`, error);
         return false;
     }
 }
-
-
-
-
-
-
-
-
-
-
-
 
 export async function updateBalance(client, guildId, userId, options = {}) {
     const data = await getEconomyData(client, guildId, userId);
@@ -157,12 +133,6 @@ export async function updateBalance(client, guildId, userId, options = {}) {
     return data;
 }
 
-
-
-
-
-
-
 export function checkCooldown(userData, action) {
     const cooldownTime = COOLDOWNS[action] || 0;
     const lastUsed = userData[`last${action.charAt(0).toUpperCase() + action.slice(1)}`] || 0;
@@ -175,11 +145,6 @@ export function checkCooldown(userData, action) {
         formatted: formatCooldown(remaining)
     };
 }
-
-
-
-
-
 
 function formatCooldown(ms) {
     if (ms < 1000) return 'now';
@@ -194,10 +159,6 @@ function formatCooldown(ms) {
     if (minutes > 0) return `${minutes}m ${seconds % 60}s`;
     return `${seconds}s`;
 }
-
-
-
-
 
 export function getWorkReward() {
     const amount = Math.floor(Math.random() * (WORK_MAX - WORK_MIN + 1)) + WORK_MIN;
@@ -222,10 +183,6 @@ export function getWorkReward() {
         message: `You ${job} and earned ${formatCurrency(amount)}!`
     };
 }
-
-
-
-
 
 export function getCrimeOutcome() {
     const outcomes = [
@@ -264,11 +221,6 @@ export function getCrimeOutcome() {
     return outcomes[Math.floor(Math.random() * outcomes.length)];
 }
 
-
-
-
-
-
 export function getRobOutcome(targetBalance) {
     if (targetBalance <= 0) {
         return {
@@ -278,11 +230,11 @@ export function getRobOutcome(targetBalance) {
         };
     }
     
-const success = Math.random() > 0.4;
+    const success = Math.random() > 0.4;
     
     if (success) {
         const amount = Math.min(
-Math.floor(Math.random() * (targetBalance * 0.3)) + 1,
+            Math.floor(Math.random() * (targetBalance * 0.3)) + 1,
             targetBalance
         );
         
@@ -303,32 +255,12 @@ Math.floor(Math.random() * (targetBalance * 0.3)) + 1,
     }
 }
 
-
-
-
-
-
-
 export function formatShopItem(item, index) {
     return `**${index + 1}.** ${item.emoji} **${item.name}** - ${formatCurrency(item.price)}\n${item.description}\n`;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 export async function addMoney(client, guildId, userId, amount, type = 'wallet') {
     try {
-        
         const validAmount = validateNumber(amount, 'amount');
         if (validAmount === null || validAmount <= 0) {
             return { success: false, error: 'Amount must be a positive number' };
@@ -369,18 +301,8 @@ export async function addMoney(client, guildId, userId, amount, type = 'wallet')
     }
 }
 
-
-
-
-
-
-
-
-
-
 export async function removeMoney(client, guildId, userId, amount, type = 'wallet') {
     try {
-        
         const validAmount = validateNumber(amount, 'amount');
         if (validAmount === null || validAmount <= 0) {
             return { success: false, error: 'Amount must be a positive number' };
@@ -475,6 +397,3 @@ export function getShopInventory() {
         }
     ];
 }
-
-
-
