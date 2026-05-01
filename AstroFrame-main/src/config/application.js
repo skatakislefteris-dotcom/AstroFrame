@@ -7,10 +7,10 @@ import { pgConfig } from "./postgres.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-
-
-
-
+// Επικύρωση ότι οι απαραίτητες μεταβλητές υπάρχουν
+if (!process.env.DISCORD_TOKEN && !process.env.TOKEN) {
+    console.error("CRITICAL ERROR: DISCORD_TOKEN or TOKEN is missing in .env file!");
+}
 
 const appConfig = {
   paths: {
@@ -36,7 +36,6 @@ const appConfig = {
     },
   },
 
-  // PostgreSQL configuration - Primary production database
   postgresql: {
     ...pgConfig,
   },
@@ -77,40 +76,26 @@ const appConfig = {
 
   shop,
 
-  
-
-
-
-
   features: {
-    
-    economy: true,                  
-    leveling: true,                 
-    moderation: true,               
-    logging: true,                  
-    welcome: true,                  
-
-    
-    tickets: true,                  
-    giveaways: true,                
-    birthday: true,                 
-    counter: true,                  
-
-    
-    verification: true,             
-    reactionRoles: true,            
-    joinToCreate: true,             
-
-    
-    voice: true,                    
-    search: true,                   
-    tools: true,                    
-    utility: true,                  
-    community: true,                
-    fun: true,                      
-
-    
-    music: false,                   
+    economy: true,
+    leveling: true,
+    moderation: true,
+    logging: true,
+    welcome: true,
+    tickets: true,
+    giveaways: true,
+    birthday: true,
+    counter: true,
+    verification: true,
+    reactionRoles: true,
+    joinToCreate: true,
+    voice: true,
+    search: true,
+    tools: true,
+    utility: true,
+    community: true,
+    fun: true,
+    music: false,
   },
 
   env: process.env.NODE_ENV || "development",
