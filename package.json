@@ -1,5 +1,4 @@
 {
-<<<<<<< HEAD
   "name": "titanbot-custom",
   "version": "2.0.0",
   "description": "Modular Ultimate Community Bot by Touchpoint Support",
@@ -17,9 +16,10 @@
   },
   "dependencies": {
     "@discordjs/rest": "^2.6.1",
+    "@supabase/supabase-js": "^2.105.1",
     "axios": "^1.13.2",
     "discord.js": "^14.15.3",
-    "dotenv": "^17.2.3",
+    "dotenv": "^17.4.2",
     "express": "^5.1.0",
     "node-cron": "^4.2.1",
     "pg": "^8.11.3",
@@ -30,10 +30,5 @@
   "devDependencies": {},
   "engines": {
     "node": ">=18.0.0"
-=======
-  "dependencies": {
-    "@supabase/supabase-js": "^2.105.1",
-    "dotenv": "^17.4.2"
->>>>>>> ac6b798 (Initial clean commit with security setup)
   }
 }
